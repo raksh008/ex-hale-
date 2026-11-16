@@ -185,6 +185,17 @@
   }
 
   // ---------- posts ----------
+  // Reads the user's ID from the signed-in token. It's a random code, not an email.
+  function getUserId() {
+    var s = getSession();
+    if (!s || !s.access_token) return null;
+    try {
+      var payload = s.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      while (payload.length % 4) payload += "=";
+      return JSON.parse(atob(payload)).sub || null;
+    } catch (e) { return null; }
+  }
+
   function timeAgo(iso) {
     var s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
     if (s < 60) return "just now";
@@ -199,6 +210,7 @@
       el.feed.innerHTML = '<p class="status">No posts yet. Be the first to share.</p>';
       return;
     }
+    var myId = getUserId();
     posts.forEach(function (p) {
       var div = document.createElement("div");
       div.className = "post";
@@ -218,12 +230,21 @@
         rep.setAttribute("data-report-id", p.id);
         div.appendChild(rep);
       }
+      if (myId && p.user_id === myId) {
+        var del = document.createElement("button");
+        del.className = "link-btn";
+        del.style.fontSize = "13px";
+        del.style.marginLeft = "12px";
+        del.textContent = "Delete";
+        del.setAttribute("data-delete-id", p.id);
+        div.appendChild(del);
+      }
       el.feed.appendChild(div);
     });
   }
 
   function loadPosts() {
-    var url = SUPABASE_URL + "/rest/v1/posts?select=id,content,avatar,created_at&reported=eq.false&order=created_at.desc&limit=50";
+    var url = SUPABASE_URL + "/rest/v1/posts?select=id,user_id,content,avatar,created_at&reported=eq.false&order=created_at.desc&limit=50";
     return fetch(url, { headers: { "apikey": KEY } })
       .then(function (r) { if (!r.ok) throw new Error("load failed"); return r.json(); })
       .then(renderPosts)
@@ -256,9 +277,38 @@
       });
   }
 
+  function deletePost(postId, btn) {
+    if (!confirm("Delete your post? This can't be undone.")) return;
+    btn.disabled = true;
+    btn.textContent = "Deleting...";
+    authedFetch(SUPABASE_URL + "/rest/v1/posts?id=eq." + encodeURIComponent(postId), {
+      method: "DELETE",
+      headers: { "Prefer": "return=representation" }
+    })
+      .then(function (r) {
+        if (r.status === 401) throw new Error("expired");
+        if (!r.ok) throw new Error("failed");
+        return r.json();
+      })
+      .then(function (rows) {
+        if (!rows.length) throw new Error("failed");
+        return loadPosts();
+      })
+      .catch(function (err) {
+        if (err.message === "expired") { showSignedOut("Your sign-in expired. Please request a new link."); return; }
+        btn.disabled = false;
+        btn.textContent = "Delete";
+        el.status.className = "status error";
+        el.status.textContent = "Could not delete that post. Please try again.";
+      });
+  }
+
   el.feed.addEventListener("click", function (e) {
-    var id = e.target.getAttribute && e.target.getAttribute("data-report-id");
-    if (id) reportPost(id, e.target);
+    var t = e.target;
+    var reportId = t.getAttribute && t.getAttribute("data-report-id");
+    var deleteId = t.getAttribute && t.getAttribute("data-delete-id");
+    if (reportId) reportPost(reportId, t);
+    if (deleteId) deletePost(deleteId, t);
   });
 
   // ---------- screens ----------
