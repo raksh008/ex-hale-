@@ -26,10 +26,11 @@
   .card { background: var(--card); border-radius: 16px; padding: 22px; box-shadow: 0 6px 24px rgba(46, 42, 51, 0.06); margin-bottom: 18px; }
   .card h2 { font-family: "Fraunces", Georgia, serif; font-weight: 400; font-size: 20px; margin-bottom: 8px; }
   .card p.muted { color: var(--muted); font-size: 14px; margin-bottom: 12px; }
-  input[type="email"] {
-    width: 100%; padding: 12px; border: 1px solid #e3d9de; border-radius: 12px; font: inherit; margin-bottom: 10px;
+  input[type="email"], input[type="text"], input[type="password"] {
+    width: 100%; padding: 12px; border: 1px solid #e3d9de; border-radius: 12px; font: inherit; margin-bottom: 10px; background: #fff;
   }
   textarea { width: 100%; min-height: 90px; padding: 12px; border: 1px solid #e3d9de; border-radius: 12px; font: inherit; resize: vertical; margin-bottom: 8px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
   .row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 10px; flex-wrap: wrap; }
   .who { font-size: 14px; color: var(--muted); }
   button { padding: 12px 20px; border: none; border-radius: 12px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
@@ -38,6 +39,7 @@
   .btn-small { background: #fff; color: var(--ink); border: 1px solid #e3d9de; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; }
   .btn-help { background: var(--accent-soft); border-color: transparent; }
   .btn-danger { color: #a33a4f; border-color: #f0c9d1; }
+  .suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
   .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
   .post { border-top: 1px solid #efe7ea; padding: 16px 0; }
   .post:first-child { border-top: none; padding-top: 0; }
@@ -62,16 +64,34 @@
   <!-- Intro -->
   <section class="card">
     <h2>What is Ex-hale?</h2>
-    <p class="muted">A gentle place for people going through a breakup, or stuck on someone they can't let go of. Share how you feel, read what others post, and remember you're not alone. Posts are anonymous, and there's no timeline you have to follow.</p>
+    <p class="muted">A gentle place for people going through a breakup, or stuck on someone they can't let go of. Share how you feel, read what others post, and remember you're not alone. Pick a made-up username, and there's no timeline you have to follow.</p>
   </section>
 
-  <!-- Sign-in with email link -->
-  <section class="card" id="auth-email" hidden>
-    <h2>Sign in to share</h2>
-    <p class="muted">Enter your email and we'll send you a sign-in link. We keep your email private and use it only to keep Ex-hale safe. Your posts still show a made-up name.</p>
-    <input type="email" id="auth-email-input" placeholder="you@example.com">
-    <button id="send-link">Email me a sign-in link</button>
-    <div class="status" id="auth-status"></div>
+  <!-- Sign up or sign in -->
+  <section class="card" id="auth" hidden>
+    <div class="tabs">
+      <button class="btn-small" id="tab-signin">Sign in</button>
+      <button class="btn-small" id="tab-signup">Create account</button>
+    </div>
+
+    <form id="signin-form" hidden>
+      <h2>Sign in</h2>
+      <input type="email" id="si-email" placeholder="Email" required>
+      <input type="password" id="si-password" placeholder="Password" required>
+      <button type="submit" id="si-submit">Sign in</button>
+      <div class="status" id="si-status"></div>
+    </form>
+
+    <form id="signup-form" hidden>
+      <h2>Create your account</h2>
+      <p class="muted">We use your email only to keep Ex-hale safe. Your username is the name others see.</p>
+      <input type="email" id="su-email" placeholder="Email" required>
+      <input type="text" id="su-username" placeholder="Choose a username (3 to 20 letters, numbers or _)" maxlength="20" required>
+      <div class="suggestions" id="suggestions"></div>
+      <input type="password" id="su-password" placeholder="Password (at least 6 characters)" minlength="6" required>
+      <button type="submit" id="su-submit">Create account</button>
+      <div class="status" id="su-status"></div>
+    </form>
   </section>
 
   <!-- Composer, shown when signed in -->
@@ -79,7 +99,7 @@
     <textarea id="content" maxlength="500" placeholder="What's on your mind today?"></textarea>
     <div class="row">
       <span class="who" id="who"></span>
-      <button id="post-btn">Post anonymously</button>
+      <button id="post-btn">Post</button>
     </div>
     <div class="status" id="status"></div>
     <div class="small"><button class="link-btn" id="sign-out">Sign out</button></div>
@@ -102,12 +122,12 @@
   var APP_URL = "https://ex-hale.vercel.app";
   var JSON_HEADERS = { "apikey": KEY, "Content-Type": "application/json" };
 
-  var ADJ = ["Quiet", "Gentle", "Brave", "Kind", "Soft", "Steady", "Warm", "Calm", "Hopeful", "Honest"];
-  var ANIMAL = ["Otter", "Owl", "Fox", "Panda", "Koala", "Deer", "Bunny", "Seal", "Robin", "Lynx"];
-
   function $(id) { return document.getElementById(id); }
   var el = {
-    authEmail: $("auth-email"), emailInput: $("auth-email-input"), sendLink: $("send-link"), authStatus: $("auth-status"),
+    auth: $("auth"), tabIn: $("tab-signin"), tabUp: $("tab-signup"),
+    signinForm: $("signin-form"), siEmail: $("si-email"), siPassword: $("si-password"), siSubmit: $("si-submit"), siStatus: $("si-status"),
+    signupForm: $("signup-form"), suEmail: $("su-email"), suUsername: $("su-username"), suPassword: $("su-password"),
+    suSubmit: $("su-submit"), suStatus: $("su-status"), suggestions: $("suggestions"),
     composer: $("composer"), content: $("content"), postBtn: $("post-btn"), status: $("status"), who: $("who"), signOut: $("sign-out"),
     feed: $("feed")
   };
@@ -122,19 +142,12 @@
   function clearSession() {
     try { localStorage.removeItem("exhale-session"); } catch (e) {}
   }
-
-  // Anonymous display name, same on this device
   function getName() {
-    var name = null;
-    try { name = localStorage.getItem("exhale-name"); } catch (e) {}
-    if (!name) {
-      name = ADJ[Math.floor(Math.random() * ADJ.length)] + " " + ANIMAL[Math.floor(Math.random() * ANIMAL.length)];
-      try { localStorage.setItem("exhale-name", name); } catch (e) {}
-    }
-    return name;
+    var s = getSession();
+    return (s && s.username) || "Anonymous";
   }
 
-  // After the user clicks the email link, Supabase returns here with tokens in the URL fragment
+  // After an email link, Supabase returns here with tokens in the URL fragment
   function readTokensFromUrl() {
     var hash = window.location.hash;
     if (!hash || hash.indexOf("access_token=") === -1) return false;
@@ -148,16 +161,8 @@
   }
 
   // ---------- auth ----------
-  function sendLink(email) {
-    var url = SUPABASE_URL + "/auth/v1/otp?redirect_to=" + encodeURIComponent(APP_URL);
-    return fetch(url, {
-      method: "POST",
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ email: email, create_user: true })
-    }).then(function (r) {
-      if (r.status === 429) throw new Error("Too many links requested. Please wait a few minutes and try again.");
-      if (!r.ok) throw new Error("Could not send the link. Check the email and try again.");
-    });
+  function parseResponse(r) {
+    return r.json().then(function (data) { return { ok: r.ok, data: data }; });
   }
 
   function refreshSession() {
@@ -170,7 +175,7 @@
     }).then(function (r) {
       if (!r.ok) return false;
       return r.json().then(function (data) {
-        saveSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+        saveSession({ access_token: data.access_token, refresh_token: data.refresh_token, username: s.username });
         return true;
       });
     }).catch(function () { return false; });
@@ -192,6 +197,24 @@
     });
   }
 
+  // Reads the username that was saved with the account
+  function loadUsername() {
+    var s = getSession();
+    if (!s) return Promise.resolve();
+    return fetch(SUPABASE_URL + "/auth/v1/user", {
+      headers: { "apikey": KEY, "Authorization": "Bearer " + s.access_token }
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (u) {
+        var cur = getSession();
+        if (u && u.user_metadata && u.user_metadata.username && cur) {
+          cur.username = u.user_metadata.username;
+          saveSession(cur);
+        }
+      })
+      .catch(function () {});
+  }
+
   // Reads the user's ID from the signed-in token. It's a random code, not an email.
   function getUserId() {
     var s = getSession();
@@ -202,6 +225,146 @@
       return JSON.parse(atob(payload)).sub || null;
     } catch (e) { return null; }
   }
+
+  // ---------- usernames ----------
+  function validUsername(u) {
+    return /^[a-zA-Z0-9_]{3,20}$/.test(u);
+  }
+
+  function isUsernameFree(u) {
+    return fetch(SUPABASE_URL + "/rest/v1/profiles?select=username&username=eq." + encodeURIComponent(u), {
+      headers: { "apikey": KEY }
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (rows) { return rows.length === 0; })
+      .catch(function () { return false; });
+  }
+
+  // Builds a few free usernames based on the one they wanted
+  function suggestUsernames(base) {
+    var clean = base.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 14) || "friend";
+    var candidates = [];
+    while (candidates.length < 6) {
+      var c = clean + Math.floor(10 + Math.random() * 9000);
+      if (candidates.indexOf(c) === -1) candidates.push(c);
+    }
+    return Promise.all(candidates.map(function (c) {
+      return isUsernameFree(c).then(function (free) { return free ? c : null; });
+    })).then(function (list) {
+      return list.filter(Boolean).slice(0, 3);
+    });
+  }
+
+  function showSuggestions(names) {
+    el.suggestions.innerHTML = "";
+    names.forEach(function (n) {
+      var b = document.createElement("button");
+      b.className = "btn-small";
+      b.type = "button";
+      b.textContent = n;
+      b.setAttribute("data-pick", n);
+      el.suggestions.appendChild(b);
+    });
+  }
+
+  el.suggestions.addEventListener("click", function (e) {
+    var pick = e.target.getAttribute && e.target.getAttribute("data-pick");
+    if (pick) el.suUsername.value = pick;
+  });
+
+  // ---------- sign up and sign in ----------
+  function afterAuth() {
+    var s = getSession();
+    if (!s || !s.username) {
+      clearSession();
+      showAuth("Please create an account with a username.");
+      loadAll();
+      return;
+    }
+    showSignedIn();
+    loadAll();
+  }
+
+  el.signupForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var email = el.suEmail.value.trim();
+    var username = el.suUsername.value.trim();
+    var password = el.suPassword.value;
+
+    el.suStatus.className = "status";
+    if (!validUsername(username)) {
+      el.suStatus.className = "status error";
+      el.suStatus.textContent = "Usernames use 3 to 20 letters, numbers or underscores.";
+      return;
+    }
+
+    el.suSubmit.disabled = true;
+    el.suStatus.textContent = "Checking username...";
+    isUsernameFree(username)
+      .then(function (free) {
+        if (!free) {
+          el.suStatus.className = "status error";
+          el.suStatus.textContent = "That username is taken. Try one of these:";
+          return suggestUsernames(username).then(showSuggestions);
+        }
+        el.suStatus.textContent = "Creating your account...";
+        return fetch(SUPABASE_URL + "/auth/v1/signup?redirect_to=" + encodeURIComponent(APP_URL), {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ email: email, password: password, data: { username: username } })
+        })
+          .then(parseResponse)
+          .then(function (res) {
+            if (!res.ok) {
+              throw new Error(res.data.msg || res.data.error_description || "Could not create the account.");
+            }
+            if (res.data.access_token) {
+              saveSession({ access_token: res.data.access_token, refresh_token: res.data.refresh_token, username: username });
+              el.suPassword.value = "";
+              afterAuth();
+              return;
+            }
+            el.suStatus.className = "status";
+            el.suStatus.textContent = "Check your email and click the confirmation link. Then come back here to sign in.";
+          });
+      })
+      .catch(function (err) {
+        el.suStatus.className = "status error";
+        el.suStatus.textContent = err.message;
+      })
+      .finally(function () { el.suSubmit.disabled = false; });
+  });
+
+  el.signinForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    el.siSubmit.disabled = true;
+    el.siStatus.className = "status";
+    el.siStatus.textContent = "Signing you in...";
+
+    fetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ email: el.siEmail.value.trim(), password: el.siPassword.value })
+    })
+      .then(parseResponse)
+      .then(function (res) {
+        if (!res.ok) throw new Error("Email or password is wrong. If you just signed up, check your email to confirm first.");
+        saveSession({ access_token: res.data.access_token, refresh_token: res.data.refresh_token });
+        return loadUsername().then(afterAuth);
+      })
+      .catch(function (err) {
+        el.siStatus.className = "status error";
+        el.siStatus.textContent = err.message;
+      })
+      .finally(function () { el.siSubmit.disabled = false; });
+  });
+
+  function showTab(which) {
+    el.signinForm.hidden = which !== "signin";
+    el.signupForm.hidden = which !== "signup";
+  }
+  el.tabIn.addEventListener("click", function () { showTab("signin"); });
+  el.tabUp.addEventListener("click", function () { showTab("signup"); });
 
   // ---------- posts and replies ----------
   function timeAgo(iso) {
@@ -313,7 +476,7 @@
   }
 
   function reportPost(postId, btn) {
-    if (!getSession()) { showSignedOut("Sign in to report a post."); return; }
+    if (!getSession()) { showAuth("Sign in to report a post."); return; }
     if (!confirm("Report this post to the Ex-hale team?")) return;
     btn.disabled = true;
     btn.textContent = "Reporting...";
@@ -329,7 +492,7 @@
         btn.textContent = "Reported. Thank you.";
       })
       .catch(function (err) {
-        if (err.message === "expired") { showSignedOut("Your sign-in expired. Please request a new link."); return; }
+        if (err.message === "expired") { showAuth("Your sign-in expired. Please sign in again."); return; }
         btn.disabled = false;
         btn.textContent = "Report";
       });
@@ -353,7 +516,7 @@
         return loadAll();
       })
       .catch(function (err) {
-        if (err.message === "expired") { showSignedOut("Your sign-in expired. Please request a new link."); return; }
+        if (err.message === "expired") { showAuth("Your sign-in expired. Please sign in again."); return; }
         btn.disabled = false;
         btn.textContent = "Delete";
         el.status.className = "status error";
@@ -362,7 +525,7 @@
   }
 
   function sendComment(postId, btn) {
-    if (!getSession()) { showSignedOut("Sign in to reply."); return; }
+    if (!getSession()) { showAuth("Sign in to reply."); return; }
     var box = document.getElementById("reply-" + postId);
     var ta = box.querySelector("textarea");
     var text = ta.value.trim();
@@ -380,7 +543,7 @@
         return loadAll();
       })
       .catch(function (err) {
-        if (err.message === "expired") { showSignedOut("Your sign-in expired. Please request a new link."); return; }
+        if (err.message === "expired") { showAuth("Your sign-in expired. Please sign in again."); return; }
         btn.disabled = false;
         btn.textContent = "Send reply";
         el.status.className = "status error";
@@ -409,39 +572,25 @@
   });
 
   // ---------- screens ----------
-  function showSignedOut(message) {
+  function showAuth(message) {
     el.composer.hidden = true;
-    el.authEmail.hidden = false;
-    if (message) { el.authStatus.textContent = message; el.authStatus.className = "status error"; }
+    el.auth.hidden = false;
+    showTab("signin");
+    if (message) {
+      el.siStatus.className = "status error";
+      el.siStatus.textContent = message;
+    }
   }
 
   function showSignedIn() {
-    el.authEmail.hidden = true;
+    el.auth.hidden = true;
     el.composer.hidden = false;
     el.who.textContent = "Posting as " + getName();
   }
 
-  el.sendLink.addEventListener("click", function () {
-    var email = el.emailInput.value.trim();
-    if (!email) { el.authStatus.className = "status"; el.authStatus.textContent = "Enter your email first."; return; }
-    el.sendLink.disabled = true;
-    el.authStatus.className = "status";
-    el.authStatus.textContent = "Sending your link...";
-    sendLink(email)
-      .then(function () {
-        el.authStatus.textContent = "Check your inbox (and spam) for a sign-in link. Open it on this device.";
-      })
-      .catch(function (err) {
-        el.authStatus.className = "status error";
-        el.authStatus.textContent = err.message;
-      })
-      .finally(function () { el.sendLink.disabled = false; });
-  });
-
   el.signOut.addEventListener("click", function () {
     clearSession();
-    showSignedOut("You've signed out.");
-    el.authStatus.className = "status";
+    showAuth("You've signed out.");
     loadAll();
   });
 
@@ -466,7 +615,7 @@
       })
       .catch(function (err) {
         if (err.message === "expired") {
-          showSignedOut("Your sign-in expired. Please request a new link.");
+          showAuth("Your sign-in expired. Please sign in again.");
           return;
         }
         el.status.className = "status error";
@@ -477,12 +626,15 @@
 
   // ---------- start ----------
   readTokensFromUrl();
-  if (getSession()) {
-    showSignedIn();
+  var s = getSession();
+  if (s && !s.username) {
+    loadUsername().then(afterAuth);
+  } else if (s) {
+    afterAuth();
   } else {
-    showSignedOut();
+    showAuth();
+    loadAll();
   }
-  loadAll();
 })();
 </script>
 </body>
