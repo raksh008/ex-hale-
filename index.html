@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ex-hale: a place to heal after a breakup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf6f1;
+    --ink: #2e2a33;
+    --muted: #6f6874;
+    --accent: #c9788a;
+    --accent-soft: #f3dfe3;
+    --sage: #9db5a0;
+    --card: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 0 24px; }
+  header { padding: 56px 0 24px; text-align: center; }
+  .logo {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+  }
+  .hero { text-align: center; padding: 32px 0 48px; }
+  .hero h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: clamp(32px, 6vw, 46px);
+    font-weight: 400;
+    line-height: 1.2;
+    margin-bottom: 18px;
+  }
+  .hero p {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 32px;
+    box-shadow: 0 6px 24px rgba(46, 42, 51, 0.06);
+    margin-bottom: 24px;
+  }
+  .card h2 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 400;
+    font-size: 24px;
+    margin-bottom: 12px;
+  }
+  .card p { color: var(--muted); }
+  .features {
+    display: grid;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .feature {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .dot {
+    flex: 0 0 10px;
+    height: 10px;
+    margin-top: 9px;
+    border-radius: 50%;
+    background: var(--sage);
+  }
+  .feature strong { display: block; color: var(--ink); font-weight: 600; }
+  .feature span { color: var(--muted); font-size: 15px; }
+  .promise {
+    background: var(--accent-soft);
+    border-radius: 18px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    text-align: center;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 20px;
+    color: var(--ink);
+  }
+  form { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  input[type="email"] {
+    flex: 1 1 260px;
+    padding: 14px 16px;
+    border: 1px solid #e3d9de;
+    border-radius: 12px;
+    font: inherit;
+    background: #fff;
+  }
+  input[type="email"]:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  button {
+    padding: 14px 24px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(0.95); }
+  .thanks { display: none; margin-top: 16px; color: var(--ink); font-weight: 500; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  .anon-note { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  footer {
+    text-align: center;
+    padding: 24px 0 56px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  footer a { color: var(--accent); }
+  .waitlist-btn {
+    display: inline-block;
+    padding: 14px 24px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .waitlist-btn:hover { filter: brightness(0.95); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">Ex-hale</div>
+  </header>
+
+  <section class="hero">
+    <h1>Breathe out. You don't have to get over it alone.</h1>
+    <p>Ex-hale is a gentle community for people going through a breakup, or stuck on someone they can't let go of.</p>
+  </section>
+
+  <section class="card">
+    <h2>What it's for</h2>
+    <p>Breakups are lonely, and friends get tired of hearing about it. Ex-hale is a space where you can say what you're feeling and be heard by people who know exactly how it feels.</p>
+  </section>
+
+  <section class="card">
+    <h2>What we're planning</h2>
+    <div class="features">
+      <div class="feature">
+        <div class="dot"></div>
+        <div><strong>Post anonymously</strong><span>Share how you feel without your name attached. Pick an avatar and be yourself, without the pressure.</span></div>
+      </div>
+      <div class="feature">
+        <div class="dot"></div>
+        <div><strong>Talk with people who get it</strong><span>Join small, moderated chat rooms for people at similar stages of healing.</span></div>
+      </div>
+      <div class="feature">
+        <div class="dot"></div>
+        <div><strong>Small steps, not a timeline</strong><span>Simple check-ins and reminders to take care of yourself, at your own pace.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="promise">
+    No judgment. No pressure to move on. Just a place to breathe.
+  </div>
+
+  <section class="card">
+    <h2>Be the first to know</h2>
+    <p>We're building Ex-hale slowly and carefully. Leave your email and we'll let you know when it's ready to try.</p>
+    <form id="waitlist">
+      <input type="email" id="email" placeholder="you@example.com" required aria-label="Email address">
+      <button type="submit" id="submit-btn">Join the waitlist</button>
+    </form>
+    <p class="thanks" id="thanks">Thank you. We are here for you. You will receive an email soon.</p>
+    <p class="note">We'll only use your email for Ex-hale updates. No spam.</p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>If you're going through a really hard time right now, please reach out to someone you trust or a helpline. In India, Tele-MANAS is free and available at <a href="tel:14416">14416</a>.</p>
+    <p style="margin-top:12px;">&copy; 2026 Ex-hale</p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSen479t-YHvTdr-2MTJ4Quu-G6heb2kMIw64gu5yiTnTbfJIw/formResponse";
+    var ENTRY_EMAIL = "entry.937731437";
+
+    var form = document.getElementById("waitlist");
+    var btn = document.getElementById("submit-btn");
+    var emailInput = document.getElementById("email");
+    var thanks = document.getElementById("thanks");
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var email = emailInput.value.trim();
+      if (!email) return;
+
+      btn.disabled = true;
+      btn.textContent = "Sending...";
+
+      var body = new URLSearchParams();
+      body.append(ENTRY_EMAIL, email);
+
+      // Google Forms does not send back readable responses to other sites,
+      // so we send in no-cors mode and show the thank-you message.
+      fetch(FORM_URL, { method: "POST", mode: "no-cors", body: body })
+        .catch(function () { /* ignore: user still sees the thank-you message */ })
+        .finally(function () {
+          form.style.display = "none";
+          thanks.style.display = "block";
+        });
+    });
+  })();
+</script>
+</body>
+</html>
