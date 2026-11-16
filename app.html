@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ex-hale: community</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf6f1;
+    --ink: #2e2a33;
+    --muted: #6f6874;
+    --accent: #c9788a;
+    --card: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Inter", system-ui, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 0 20px; }
+  header { padding: 40px 0 16px; text-align: center; }
+  .logo { font-family: "Fraunces", Georgia, serif; font-size: 26px; font-weight: 600; color: var(--accent); }
+  .tag { color: var(--muted); font-size: 15px; margin-top: 4px; }
+  .card { background: var(--card); border-radius: 16px; padding: 22px; box-shadow: 0 6px 24px rgba(46, 42, 51, 0.06); margin-bottom: 18px; }
+  textarea { width: 100%; min-height: 90px; padding: 12px; border: 1px solid #e3d9de; border-radius: 12px; font: inherit; resize: vertical; }
+  .row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 10px; flex-wrap: wrap; }
+  .who { font-size: 14px; color: var(--muted); }
+  button { padding: 12px 20px; border: none; border-radius: 12px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: 0.6; cursor: default; }
+  .post { border-top: 1px solid #efe7ea; padding: 16px 0; }
+  .post:first-child { border-top: none; padding-top: 0; }
+  .post-meta { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .post-body { white-space: pre-wrap; word-wrap: break-word; }
+  .status { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .error { color: #a33a4f; }
+  footer { text-align: center; font-size: 14px; color: var(--muted); padding: 24px 0 48px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Ex-hale</div>
+    <div class="tag">Say what you're feeling. No one here will judge you.</div>
+  </header>
+
+  <section class="card">
+    <textarea id="content" maxlength="500" placeholder="What's on your mind today?"></textarea>
+    <div class="row">
+      <span class="who" id="who"></span>
+      <button id="post-btn">Post anonymously</button>
+    </div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section class="card" id="feed"><p class="status">Loading posts...</p></section>
+</div>
+
+<footer>
+  If you're really struggling right now, please reach out to someone you trust or a helpline. In India, Tele-MANAS is free at 14416.
+</footer>
+
+<script>
+(function () {
+  var SUPABASE_URL = "https://bbcahlpmgkaouzhxedmp.supabase.co";
+  var PUBLISHABLE_KEY = "sb_publishable_dD7JU0C1DrYNfsvumaZ1_g_bbVE3zmI";
+  var HEADERS = { "apikey": PUBLISHABLE_KEY, "Content-Type": "application/json" };
+
+  var ADJ = ["Quiet", "Gentle", "Brave", "Kind", "Soft", "Steady", "Warm", "Calm", "Hopeful", "Honest"];
+  var ANIMAL = ["Otter", "Owl", "Fox", "Panda", "Koala", "Deer", "Bunny", "Seal", "Robin", "Lynx"];
+
+  var contentEl = document.getElementById("content");
+  var postBtn = document.getElementById("post-btn");
+  var statusEl = document.getElementById("status");
+  var feedEl = document.getElementById("feed");
+  var whoEl = document.getElementById("who");
+
+  function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+
+  // Each visitor keeps the same anonymous name on this device
+  var name = null;
+  try { name = localStorage.getItem("exhale-name"); } catch (e) {}
+  if (!name) {
+    name = pick(ADJ) + " " + pick(ANIMAL);
+    try { localStorage.setItem("exhale-name", name); } catch (e) {}
+  }
+  whoEl.textContent = "Posting as " + name;
+
+  function timeAgo(iso) {
+    var s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.floor(s / 60) + " min ago";
+    if (s < 86400) return Math.floor(s / 3600) + " hr ago";
+    return Math.floor(s / 86400) + " days ago";
+  }
+
+  function renderPosts(posts) {
+    feedEl.innerHTML = "";
+    if (!posts.length) {
+      feedEl.innerHTML = '<p class="status">No posts yet. Be the first to share.</p>';
+      return;
+    }
+    posts.forEach(function (p) {
+      var div = document.createElement("div");
+      div.className = "post";
+      var meta = document.createElement("div");
+      meta.className = "post-meta";
+      meta.textContent = p.avatar + " · " + timeAgo(p.created_at);
+      var body = document.createElement("div");
+      body.className = "post-body";
+      body.textContent = p.content;
+      div.appendChild(meta);
+      div.appendChild(body);
+      feedEl.appendChild(div);
+    });
+  }
+
+  function loadPosts() {
+    var url = SUPABASE_URL + "/rest/v1/posts?select=content,avatar,created_at&reported=eq.false&order=created_at.desc&limit=50";
+    return fetch(url, { headers: HEADERS })
+      .then(function (r) { if (!r.ok) throw new Error("load failed"); return r.json(); })
+      .then(renderPosts)
+      .catch(function () {
+        feedEl.innerHTML = '<p class="status error">Could not load posts right now. Please refresh in a moment.</p>';
+      });
+  }
+
+  postBtn.addEventListener("click", function () {
+    var text = contentEl.value.trim();
+    if (!text) { statusEl.textContent = "Write something first."; statusEl.className = "status"; return; }
+    postBtn.disabled = true;
+    statusEl.textContent = "Posting...";
+    statusEl.className = "status";
+
+    fetch(SUPABASE_URL + "/rest/v1/posts", {
+      method: "POST",
+      headers: Object.assign({ "Prefer": "return=minimal" }, HEADERS),
+      body: JSON.stringify({ content: text, avatar: name })
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("post failed");
+        contentEl.value = "";
+        statusEl.textContent = "Thank you for sharing. You're not alone.";
+        return loadPosts();
+      })
+      .catch(function () {
+        statusEl.textContent = "Something went wrong. Please try again.";
+        statusEl.className = "status error";
+      })
+      .finally(function () { postBtn.disabled = false; });
+  });
+
+  loadPosts();
+})();
+</script>
+</body>
+</html>
