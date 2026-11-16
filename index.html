@@ -13,9 +13,11 @@
     --ink: #2e2a33;
     --muted: #6f6874;
     --accent: #c9788a;
+    --accent-soft: #f3dfe3;
     --card: #ffffff;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
   body { font-family: "Inter", system-ui, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; }
   .wrap { max-width: 680px; margin: 0 auto; padding: 0 20px; }
   header { padding: 40px 0 16px; text-align: center; }
@@ -27,16 +29,22 @@
   input[type="email"] {
     width: 100%; padding: 12px; border: 1px solid #e3d9de; border-radius: 12px; font: inherit; margin-bottom: 10px;
   }
-  textarea { width: 100%; min-height: 90px; padding: 12px; border: 1px solid #e3d9de; border-radius: 12px; font: inherit; resize: vertical; }
+  textarea { width: 100%; min-height: 90px; padding: 12px; border: 1px solid #e3d9de; border-radius: 12px; font: inherit; resize: vertical; margin-bottom: 8px; }
   .row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 10px; flex-wrap: wrap; }
   .who { font-size: 14px; color: var(--muted); }
   button { padding: 12px 20px; border: none; border-radius: 12px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   button:disabled { opacity: 0.6; cursor: default; }
   .link-btn { background: none; color: var(--muted); padding: 0; font-weight: 500; text-decoration: underline; }
+  .btn-small { background: #fff; color: var(--ink); border: 1px solid #e3d9de; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; }
+  .btn-help { background: var(--accent-soft); border-color: transparent; }
+  .btn-danger { color: #a33a4f; border-color: #f0c9d1; }
+  .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
   .post { border-top: 1px solid #efe7ea; padding: 16px 0; }
   .post:first-child { border-top: none; padding-top: 0; }
   .post-meta { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
   .post-body { white-space: pre-wrap; word-wrap: break-word; }
+  .comment { margin-top: 12px; margin-left: 14px; padding-left: 12px; border-left: 2px solid #efe7ea; }
+  .reply-box { margin-top: 12px; }
   .status { color: var(--muted); font-size: 14px; margin-top: 8px; }
   .error { color: #a33a4f; }
   .small { font-size: 13px; color: var(--muted); margin-top: 12px; }
@@ -184,7 +192,6 @@
     });
   }
 
-  // ---------- posts ----------
   // Reads the user's ID from the signed-in token. It's a random code, not an email.
   function getUserId() {
     var s = getSession();
@@ -196,6 +203,7 @@
     } catch (e) { return null; }
   }
 
+  // ---------- posts and replies ----------
   function timeAgo(iso) {
     var s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
     if (s < 60) return "just now";
@@ -204,16 +212,27 @@
     return Math.floor(s / 86400) + " days ago";
   }
 
-  function renderPosts(posts) {
+  function makeBtn(label, cls, attr, value) {
+    var b = document.createElement("button");
+    b.className = cls;
+    b.textContent = label;
+    b.setAttribute(attr, value);
+    return b;
+  }
+
+  function renderPosts(posts, commentsByPost) {
     el.feed.innerHTML = "";
     if (!posts.length) {
       el.feed.innerHTML = '<p class="status">No posts yet. Be the first to share.</p>';
       return;
     }
     var myId = getUserId();
+    var signedIn = !!getSession();
+
     posts.forEach(function (p) {
       var div = document.createElement("div");
       div.className = "post";
+
       var meta = document.createElement("div");
       meta.className = "post-meta";
       meta.textContent = p.avatar + " · " + timeAgo(p.created_at);
@@ -222,38 +241,77 @@
       body.textContent = p.content;
       div.appendChild(meta);
       div.appendChild(body);
-      if (getSession()) {
-        var rep = document.createElement("button");
-        rep.className = "link-btn";
-        rep.style.fontSize = "13px";
-        rep.textContent = "Report";
-        rep.setAttribute("data-report-id", p.id);
-        div.appendChild(rep);
+
+      var actions = document.createElement("div");
+      actions.className = "actions";
+      if (signedIn) {
+        actions.appendChild(makeBtn("Help " + p.avatar, "btn-small btn-help", "data-help-id", p.id));
+        actions.appendChild(makeBtn("Report", "btn-small", "data-report-id", p.id));
       }
       if (myId && p.user_id === myId) {
-        var del = document.createElement("button");
-        del.className = "link-btn";
-        del.style.fontSize = "13px";
-        del.style.marginLeft = "12px";
-        del.textContent = "Delete";
-        del.setAttribute("data-delete-id", p.id);
-        div.appendChild(del);
+        actions.appendChild(makeBtn("Delete", "btn-small btn-danger", "data-delete-id", p.id));
       }
+      div.appendChild(actions);
+
+      (commentsByPost[p.id] || []).forEach(function (c) {
+        var cd = document.createElement("div");
+        cd.className = "comment";
+        var cm = document.createElement("div");
+        cm.className = "post-meta";
+        cm.textContent = c.avatar + " · " + timeAgo(c.created_at);
+        var cb = document.createElement("div");
+        cb.className = "post-body";
+        cb.textContent = c.content;
+        cd.appendChild(cm);
+        cd.appendChild(cb);
+        div.appendChild(cd);
+      });
+
+      if (signedIn) {
+        var box = document.createElement("div");
+        box.className = "reply-box";
+        box.id = "reply-" + p.id;
+        box.hidden = true;
+        var ta = document.createElement("textarea");
+        ta.maxLength = 300;
+        ta.style.minHeight = "60px";
+        ta.placeholder = "Write a kind reply to " + p.avatar + "...";
+        box.appendChild(ta);
+        box.appendChild(makeBtn("Send reply", "btn-small btn-help", "data-send-id", p.id));
+        div.appendChild(box);
+      }
+
       el.feed.appendChild(div);
     });
   }
 
-  function loadPosts() {
-    var url = SUPABASE_URL + "/rest/v1/posts?select=id,user_id,content,avatar,created_at&reported=eq.false&order=created_at.desc&limit=50";
-    return fetch(url, { headers: { "apikey": KEY } })
-      .then(function (r) { if (!r.ok) throw new Error("load failed"); return r.json(); })
-      .then(renderPosts)
+  function loadAll() {
+    var headers = { "apikey": KEY };
+    var postsUrl = SUPABASE_URL + "/rest/v1/posts?select=id,user_id,content,avatar,created_at&reported=eq.false&order=created_at.desc&limit=50";
+    var commentsUrl = SUPABASE_URL + "/rest/v1/comments?select=id,post_id,avatar,content,created_at&order=created_at.asc&limit=500";
+
+    var postsReq = fetch(postsUrl, { headers: headers }).then(function (r) {
+      if (!r.ok) throw new Error("load failed");
+      return r.json();
+    });
+    // If comments can't load, still show the posts
+    var commentsReq = fetch(commentsUrl, { headers: headers })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .catch(function () { return []; });
+
+    return Promise.all([postsReq, commentsReq])
+      .then(function (res) {
+        var map = {};
+        res[1].forEach(function (c) {
+          (map[c.post_id] = map[c.post_id] || []).push(c);
+        });
+        renderPosts(res[0], map);
+      })
       .catch(function () {
         el.feed.innerHTML = '<p class="status error">Could not load posts right now. Please refresh in a moment.</p>';
       });
   }
 
-  // ---------- reporting ----------
   function reportPost(postId, btn) {
     if (!getSession()) { showSignedOut("Sign in to report a post."); return; }
     if (!confirm("Report this post to the Ex-hale team?")) return;
@@ -292,7 +350,7 @@
       })
       .then(function (rows) {
         if (!rows.length) throw new Error("failed");
-        return loadPosts();
+        return loadAll();
       })
       .catch(function (err) {
         if (err.message === "expired") { showSignedOut("Your sign-in expired. Please request a new link."); return; }
@@ -303,12 +361,51 @@
       });
   }
 
+  function sendComment(postId, btn) {
+    if (!getSession()) { showSignedOut("Sign in to reply."); return; }
+    var box = document.getElementById("reply-" + postId);
+    var ta = box.querySelector("textarea");
+    var text = ta.value.trim();
+    if (!text) return;
+    btn.disabled = true;
+    btn.textContent = "Sending...";
+    authedFetch(SUPABASE_URL + "/rest/v1/comments", {
+      method: "POST",
+      headers: { "Prefer": "return=minimal" },
+      body: JSON.stringify({ post_id: Number(postId), avatar: getName(), content: text })
+    })
+      .then(function (r) {
+        if (r.status === 401) throw new Error("expired");
+        if (!r.ok) throw new Error("failed");
+        return loadAll();
+      })
+      .catch(function (err) {
+        if (err.message === "expired") { showSignedOut("Your sign-in expired. Please request a new link."); return; }
+        btn.disabled = false;
+        btn.textContent = "Send reply";
+        el.status.className = "status error";
+        el.status.textContent = "Could not send your reply. Please try again.";
+      });
+  }
+
   el.feed.addEventListener("click", function (e) {
     var t = e.target;
-    var reportId = t.getAttribute && t.getAttribute("data-report-id");
-    var deleteId = t.getAttribute && t.getAttribute("data-delete-id");
+    if (!t.getAttribute) return;
+    var helpId = t.getAttribute("data-help-id");
+    var reportId = t.getAttribute("data-report-id");
+    var deleteId = t.getAttribute("data-delete-id");
+    var sendId = t.getAttribute("data-send-id");
+
+    if (helpId) {
+      var box = document.getElementById("reply-" + helpId);
+      if (box) {
+        box.hidden = !box.hidden;
+        if (!box.hidden) box.querySelector("textarea").focus();
+      }
+    }
     if (reportId) reportPost(reportId, t);
     if (deleteId) deletePost(deleteId, t);
+    if (sendId) sendComment(sendId, t);
   });
 
   // ---------- screens ----------
@@ -345,7 +442,7 @@
     clearSession();
     showSignedOut("You've signed out.");
     el.authStatus.className = "status";
-    loadPosts();
+    loadAll();
   });
 
   el.postBtn.addEventListener("click", function () {
@@ -365,7 +462,7 @@
         if (!r.ok) throw new Error("post failed");
         el.content.value = "";
         el.status.textContent = "Thank you for sharing. You're not alone.";
-        return loadPosts();
+        return loadAll();
       })
       .catch(function (err) {
         if (err.message === "expired") {
@@ -385,7 +482,7 @@
   } else {
     showSignedOut();
   }
-  loadPosts();
+  loadAll();
 })();
 </script>
 </body>
