@@ -210,12 +210,20 @@
       body.textContent = p.content;
       div.appendChild(meta);
       div.appendChild(body);
+      if (getSession()) {
+        var rep = document.createElement("button");
+        rep.className = "link-btn";
+        rep.style.fontSize = "13px";
+        rep.textContent = "Report";
+        rep.setAttribute("data-report-id", p.id);
+        div.appendChild(rep);
+      }
       el.feed.appendChild(div);
     });
   }
 
   function loadPosts() {
-    var url = SUPABASE_URL + "/rest/v1/posts?select=content,avatar,created_at&reported=eq.false&order=created_at.desc&limit=50";
+    var url = SUPABASE_URL + "/rest/v1/posts?select=id,content,avatar,created_at&reported=eq.false&order=created_at.desc&limit=50";
     return fetch(url, { headers: { "apikey": KEY } })
       .then(function (r) { if (!r.ok) throw new Error("load failed"); return r.json(); })
       .then(renderPosts)
@@ -223,6 +231,35 @@
         el.feed.innerHTML = '<p class="status error">Could not load posts right now. Please refresh in a moment.</p>';
       });
   }
+
+  // ---------- reporting ----------
+  function reportPost(postId, btn) {
+    if (!getSession()) { showSignedOut("Sign in to report a post."); return; }
+    if (!confirm("Report this post to the Ex-hale team?")) return;
+    btn.disabled = true;
+    btn.textContent = "Reporting...";
+    authedFetch(SUPABASE_URL + "/rest/v1/reports", {
+      method: "POST",
+      headers: { "Prefer": "return=minimal" },
+      body: JSON.stringify({ post_id: Number(postId), reason: "reported" })
+    })
+      .then(function (r) {
+        if (r.status === 401) throw new Error("expired");
+        if (r.status === 409) { btn.textContent = "Already reported"; return; }
+        if (!r.ok) throw new Error("failed");
+        btn.textContent = "Reported. Thank you.";
+      })
+      .catch(function (err) {
+        if (err.message === "expired") { showSignedOut("Your sign-in expired. Please request a new link."); return; }
+        btn.disabled = false;
+        btn.textContent = "Report";
+      });
+  }
+
+  el.feed.addEventListener("click", function (e) {
+    var id = e.target.getAttribute && e.target.getAttribute("data-report-id");
+    if (id) reportPost(id, e.target);
+  });
 
   // ---------- screens ----------
   function showSignedOut(message) {
